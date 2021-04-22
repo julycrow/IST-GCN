@@ -1,0 +1,23 @@
+#weights: ./models/st_gcn.kinetics.pt
+weights: D:\PycharmProject\st-gcn\work_dir\recognition\kinetics_skeleton\ST_GCN/epoch150_model.pt
+
+# feeder
+feeder: feeder.feeder.Feeder
+test_feeder_args:
+  data_path: D:/database/after_kinetics_gendata/val_data.npy
+  label_path: D:/database/after_kinetics_gendata/val_label.pkl
+
+# model
+model: net.st_gcn.Model
+model_args:
+  in_channels: 3
+  num_class: 4
+  edge_importance_weighting: True
+  graph_args:
+    layout: 'openpose'
+    strategy: 'spatial'
+
+# test 
+phase: test
+device: 0
+test_batch_size: 8

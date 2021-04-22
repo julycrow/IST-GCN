@@ -1,0 +1,17 @@
+{
+    "1Aclean_and_jerk": {
+        "has_skeleton": true,
+        "label": "Fall",
+        "label_index": 1
+    },
+    "2Askateboarding": {
+        "has_skeleton": true,
+        "label": "Push",
+        "label_index": 2
+    },
+    "3Ata_chi": {
+        "has_skeleton": true,
+        "label": "Smash",
+        "label_index": 3
+    }
+}

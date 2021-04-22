@@ -1,0 +1,40 @@
+work_dir: ./work_dir/recognition/kinetics_skeleton/ST_GCN
+
+# feeder
+feeder: feeder.feeder.Feeder
+train_feeder_args:
+  random_choose: True
+  random_move: True
+  window_size: 150
+  data_path: D:/database/after_kinetics_gendata/train_data.npy
+  label_path: D:/database/after_kinetics_gendata/train_label.pkl
+test_feeder_args:
+  data_path: D:/database/after_kinetics_gendata/val_data.npy
+  label_path: D:/database/after_kinetics_gendata/val_label.pkl
+
+# model
+model: net.st_gcn.Model
+model_args:
+  in_channels: 3
+  num_class: 4
+  edge_importance_weighting: True
+  graph_args:
+    layout: 'openpose'
+    strategy: 'spatial'
+
+# training
+device: [0]  # 单个cpu
+batch_size: 64
+test_batch_size: 64
+
+
+#optim
+base_lr: 0.1
+step: [20, 60, 100, 150]
+num_epoch: 150
+
+
+# 断点
+#start_epoch: 0	# 这里填写上次训练中断时的epoch，如果上次训练了5个epoch（0，1，2，3，4），那么再次训练的时候填5即可
+#save_interval: 1	 # 源码是时10个epoch保存一次模型参数weights，我设置为1
+#weights: model_path # 这里填写最近一个epoch保存的model_weights.pt文件的路径，如果不加上这个参数，则默认训练一个新的模型
