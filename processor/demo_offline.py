@@ -194,7 +194,7 @@ class DemoOffline(IO):
 
             print('Pose estimation ({}/{}).'.format(frame_index, video_length))
 
-        data_numpy = pose_tracker.get_skeleton_sequence()
+        data_numpy = pose_tracker.get_skeleton_sequence()  # 18个骨架序列
         return video, data_numpy
 
     @staticmethod

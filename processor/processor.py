@@ -50,8 +50,8 @@ class Processor(IO):
             self.arg.train_feeder_args['debug'] = self.arg.debug
         self.data_loader = dict()
         if self.arg.phase == 'train':
-            self.data_loader['train'] = torch.utils.data.DataLoader(
-                dataset=Feeder(**self.arg.train_feeder_args),
+            self.data_loader['train'] = torch.utils.data.DataLoader(  # data_loader['train']里包含npy和pkl两个代表的data和label
+                dataset=Feeder(**self.arg.train_feeder_args),  # train.yaml里面
                 batch_size=self.arg.batch_size,
                 shuffle=True,  # 将输入数据的顺序打乱，是为了使数据更有独立性
                 num_workers=self.arg.num_worker * torchlight.ngpu(  # 工作者数量，默认是0。使用多少个子进程来导入数据。

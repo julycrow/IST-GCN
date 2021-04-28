@@ -48,7 +48,8 @@ def gendata(
     sample_name = feeder.sample_name
     sample_label = []
 
-    fp = open_memmap(
+    fp = open_memmap(  # 内存映射,允许将大文件分成小段进行读写，而不是一次性将整个数组读入内存.
+                       # 里面包含骨架点的内容,
         data_out_path,
         dtype='float32',
         mode='w+',

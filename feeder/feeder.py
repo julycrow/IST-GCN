@@ -56,7 +56,7 @@ class Feeder(torch.utils.data.Dataset):
 
         # load data
         if mmap:
-            self.data = np.load(self.data_path, mmap_mode='r')
+            self.data = np.load(self.data_path, mmap_mode='r')  # 普通文件被映射到虚拟地址空间后，程序可以像操作内存一样操作文件，可以提高访问效率，适合处理超大文件
         else:
             self.data = np.load(self.data_path)
             

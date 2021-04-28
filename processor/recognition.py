@@ -76,15 +76,20 @@ class REC_Processor(Processor):
         self.io.print_log('\tTop{}: {:.2f}%'.format(k, 100 * accuracy))
 
     def train(self):
-        self.model.train()
+        self.model.train()  # 使用BatchNormalizetion()和Dropout()  pytorch中的model.train（）
         self.adjust_lr()
-        loader = self.data_loader['train']  # 传入数据
+        loader = self.data_loader['train']  # 将.npy中的数据传进来
+        #print(loader)
         loss_value = []
 
         for data, label in loader:
 
             # get data
-            data = data.float().to(self.dev)
+            data = data.float().to(self.dev)  # tensor  data.shape = (64, 3, 150, 18, 2)在这里加重心点
+            gravity = torch.sum(data, dim=3)  # gravity为第19个关节点,即重心点,取前十八个的平均值
+            gravity /= 18
+            gravity.unsqueeze_(3)  # 补充第三维使得可以和data拼接
+            data = torch.cat((data, gravity), 3) # data.shape = (64, 3, 150, 19, 2)
             label = label.long().to(self.dev)
 
             # forward
@@ -109,7 +114,7 @@ class REC_Processor(Processor):
 
     def test(self, evaluation=True):
 
-        self.model.eval()
+        self.model.eval()  # 不使用BatchNormalizetion()和Dropout()
         loader = self.data_loader['test']
         loss_value = []
         result_frag = []
