@@ -86,14 +86,16 @@ class REC_Processor(Processor):
 
             # get data
             data = data.float().to(self.dev)  # tensor  data.shape = (64, 3, 150, 18, 2)在这里加重心点
+
             gravity = torch.sum(data, dim=3)  # gravity为第19个关节点,即重心点,取前十八个的平均值
             gravity /= 18
             gravity.unsqueeze_(3)  # 补充第三维使得可以和data拼接
             data = torch.cat((data, gravity), 3) # data.shape = (64, 3, 150, 19, 2)
+
             label = label.long().to(self.dev)
 
             # forward
-            output = self.model(data)
+            output = self.model(data)  # 这里出的问题
             loss = self.loss(output, label)
 
             # backward
@@ -124,6 +126,12 @@ class REC_Processor(Processor):
             
             # get data
             data = data.float().to(self.dev)
+
+            gravity = torch.sum(data, dim=3)  # gravity为第19个关节点,即重心点,取前十八个的平均值
+            gravity /= 18
+            gravity.unsqueeze_(3)  # 补充第三维使得可以和data拼接
+            data = torch.cat((data, gravity), 3)  # data.shape = (64, 3, 150, 19, 2)
+
             label = label.long().to(self.dev)
 
             # inference

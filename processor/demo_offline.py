@@ -46,8 +46,7 @@ class DemoOffline(IO):
         video_name = self.arg.video.split('\\')[-1].split('.')[0]
         output_result_path = '{}/{}.mp4'.format(self.arg.output_dir, video_name)
 
-        writer = skvideo.io.FFmpegWriter(output_result_path,
-                                         outputdict={'-b': '300000000'})
+        writer = skvideo.io.FFmpegWriter(output_result_path, outputdict={'-b': '300000000'})
         # for img in images:
         #     writer.writeFrame(img)
         # writer.close()
@@ -188,13 +187,18 @@ class DemoOffline(IO):
             multi_pose[:, :, 0][multi_pose[:, :, 2] == 0] = 0
             multi_pose[:, :, 1][multi_pose[:, :, 2] == 0] = 0
 
+            gravity_pose = np.sum(multi_pose, axis=1)  # 在识别到的骨架点中加入重心点
+            gravity_pose /= 18
+            gravity_pose = np.expand_dims(gravity_pose, 1)
+            multi_pose = np.concatenate((multi_pose, gravity_pose), 1)  # 拼接
+
             # pose tracking
             pose_tracker.update(multi_pose, frame_index)
             frame_index += 1
 
             print('Pose estimation ({}/{}).'.format(frame_index, video_length))
 
-        data_numpy = pose_tracker.get_skeleton_sequence()  # 18个骨架序列
+        data_numpy = pose_tracker.get_skeleton_sequence()  # 19个骨架序列 data_numpy.shape = (3, 300, 19, 3)
         return video, data_numpy
 
     @staticmethod
@@ -241,7 +245,7 @@ class naive_pose_tracker():
     一个简单的跟踪器，用于记录人的姿势和生成骨骼序列。
     """
 
-    def __init__(self, data_frame=128, num_joint=18, max_frame_dis=np.inf):
+    def __init__(self, data_frame=128, num_joint=19, max_frame_dis=np.inf):
         self.data_frame = data_frame
         self.num_joint = num_joint
         self.max_frame_dis = max_frame_dis

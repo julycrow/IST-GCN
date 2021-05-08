@@ -23,7 +23,7 @@ class Graph():
     """
 
     def __init__(self,
-                 layout='openpose_gravity',
+                 layout='openpose',
                  strategy='uniform',
                  max_hop=1,
                  dilation=1):
@@ -87,7 +87,7 @@ class Graph():
             raise ValueError("Do Not Exist This Layout.")
 
     def get_adjacency(self, strategy):
-        valid_hop = range(0, self.max_hop + 1, self.dilation)  # 合法的距离值：0或1
+        valid_hop = range(0, self.max_hop + 1, self.dilation)  # 合法的距离值：0或1, valid_hop = [0, 1]
         adjacency = np.zeros((self.num_node, self.num_node))
         for hop in valid_hop:
             adjacency[self.hop_dis == hop] = 1  # 将0|1的位置置1,inf抛弃
@@ -106,11 +106,39 @@ class Graph():
         elif strategy == 'spatial':  # 建立关节节点分组
             A = []
             for hop in valid_hop:  # hop为0的时候找ij相等的点,即自身;hop为1的时候找相邻的点,分为近心和离心两类
-                a_root = np.zeros((self.num_node, self.num_node))  # 分为三组
+                a_root = np.zeros((self.num_node, self.num_node))  # 前三组
                 a_close = np.zeros((self.num_node, self.num_node))
                 a_further = np.zeros((self.num_node, self.num_node))
+
                 for i in range(self.num_node):
                     for j in range(self.num_node):
+                        if self.hop_dis[j, i] == hop:
+                            if self.hop_dis[j, self.center] == self.hop_dis[
+                                i, self.center]:
+                                a_root[j, i] = normalize_adjacency[j, i]
+                            elif self.hop_dis[j, self.
+                                    center] > self.hop_dis[i, self.
+                                    center]:
+                                a_close[j, i] = normalize_adjacency[j, i]
+                            else:
+                                a_further[j, i] = normalize_adjacency[j, i]
+                if hop == 0:
+                    A.append(a_root)
+                else:
+                    A.append(a_root + a_close)
+                    A.append(a_further)
+
+            A = np.stack(A)
+            self.A = A
+        elif strategy == 'spatial_gravity':  # 建立关节节点分组
+            A = []
+            for hop in valid_hop:  # hop为0的时候找ij相等的点,即自身;hop为1的时候找相邻的点,分为近心和离心两类
+                a_root = np.zeros((self.num_node, self.num_node))  # 前三组
+                a_close = np.zeros((self.num_node, self.num_node))
+                a_further = np.zeros((self.num_node, self.num_node))
+
+                for i in range(self.num_node - 1):
+                    for j in range(self.num_node - 1):
                         if self.hop_dis[j, i] == hop:
                             if self.hop_dis[j, self.center] == self.hop_dis[
                                     i, self.center]:
@@ -126,6 +154,13 @@ class Graph():
                 else:
                     A.append(a_root + a_close)
                     A.append(a_further)
+
+            a_gravity = np.zeros((self.num_node, self.num_node))  # 重心点分组
+            for i in range(self.num_node):
+                a_gravity[18, i] = normalize_adjacency[18, i]
+                a_gravity[i, 18] = normalize_adjacency[i, 18]
+            A.append(a_gravity)
+
             A = np.stack(A)
             self.A = A
         else:

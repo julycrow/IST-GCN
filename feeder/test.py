@@ -10,18 +10,19 @@ label_path = 'D:/database/after_kinetics_gendata/val_data.npy'
 #print(arr.shape)  # (222, 3, 300, 18, 2)(nctvm)
 i = 0
 j = 0
-x = torch.randn(64, 3, 150, 18, 2)
+x = np.random.random((2, 18, 3))
 #x = x.permute(0, 1, 2, 4, 3)
-print(x[2][0][5])
+print(x[0])
 print(x.shape)
 #x.expand(64, 3, 150, 2, 19)
-c = torch.sum(x, dim = 3)
-print(c[2][0][5])
+c = np.sum(x, axis=1)
 c /= 18
-#c[1] /= 18
-c.unsqueeze_(3)
-x = torch.cat((x, c), 3)
+print(c[0])
+
+c.expand_dims(c, 1)
+print(c.shape)
+
+x = np.concatenate((x, c), axis=1)
 print(x.shape)
-print(c[2][0][5])
 #temp.expand(64, 3, 150, 19, 2)
-print(x[2][0][5])
+print(x[0])
