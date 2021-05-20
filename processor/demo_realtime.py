@@ -16,6 +16,11 @@ import tools.utils as utils
 
 import cv2
 
+from queue import Queue
+from Neo4j.visualize import visualize
+from PIL import Image, ImageDraw, ImageFont
+
+
 class DemoRealtime(IO):
     """ A demo for utilizing st-gcn in the realtime action recognition.
     The Openpose python-api is required for this demo.
@@ -46,12 +51,25 @@ class DemoRealtime(IO):
         #     print('Can not find Openpose Python API.')
         #     return
         dir_path = os.path.dirname(os.path.realpath(__file__))
+
+        warning_person = 2  # 聚集人数
+        long_interval = 5400  # 帧间隔(长),3分钟包含的帧数, 用来判断长警情,
+        short_interval = 1800  # 帧间隔(短),1分钟包含的帧数, 用来判断短警情
+        long_recognize_windows = 180  # 识别窗口(长),用来判断长警情
+        short_recognize_windows = 45  # 识别窗口(短),用来判断短警情
+        person_list = []  # 维护这个列表来判断是否为长短警情
+        smash_list = []
+        pull_list = []
+        fall_list = []
+
         try:
             sys.path.append(dir_path + '/../../openpose/build/python/openpose/Release');
-            os.environ['PATH'] = os.environ['PATH'] + ';' + dir_path + '/../../openpose/build/x64/Release;' + dir_path +'/../../openpose/build/bin;'
+            os.environ['PATH'] = os.environ[
+                                     'PATH'] + ';' + dir_path + '/../../openpose/build/x64/Release;' + dir_path + '/../../openpose/build/bin;'
             import pyopenpose as op
         except ImportError as e:
-            print('Error: OpenPose library could not be found. Did you enable `BUILD_PYTHON` in CMake and have this Python script in the right folder?')
+            print(
+                'Error: OpenPose library could not be found. Did you enable `BUILD_PYTHON` in CMake and have this Python script in the right folder?')
             raise e
 
         video_name = self.arg.video.split('/')[-1].split('.')[0]
@@ -71,13 +89,15 @@ class DemoRealtime(IO):
 
         if self.arg.video == 'camera_source':
             video_capture = cv2.VideoCapture(0)
+            # video_capture = cv2.VideoCapture(0, cv2.CAP_DSHOW)
         else:
             video_capture = cv2.VideoCapture(self.arg.video)
 
         # start recognition
         start_time = time.time()
         frame_index = 0
-        while(True):
+
+        while True:
 
             tic = time.time()
 
@@ -89,7 +109,7 @@ class DemoRealtime(IO):
             orig_image = cv2.resize(
                 orig_image, (256 * source_W // source_H, 256))
             H, W, _ = orig_image.shape
-            
+
             # pose estimation
             datum = op.Datum()
             datum.cvInputData = orig_image
@@ -100,16 +120,57 @@ class DemoRealtime(IO):
             if multi_pose is None:  # 是否三维数组
                 continue
 
+            # 人员聚集识别->识别人数超过规定人数,且持续一段时间
+            def return_inf(input, occ_time, orig_image):
+                path = visualize(input)  # graph_base.html的path(知识图谱)
+                # 输出图像, 时间
+                whole_time = time.asctime(time.localtime(occ_time))
+                # cv2.destroyAllWindows()
+                if isinstance(orig_image, np.ndarray):  # 判断是否OpenCV图片类型
+                    orig_image = Image.fromarray(cv2.cvtColor(orig_image, cv2.COLOR_BGR2RGB))
+                # 创建一个可以在给定图像上绘图的对象
+                draw = ImageDraw.Draw(orig_image)
+                # 字体的格式
+                fontStyle = ImageFont.truetype(
+                    "font/simsun.ttc", 20, encoding="utf-8")
+                # 绘制文本
+                draw.text((10, 10), input, (255, 0, 0), fontStyle)
+                # 转换回OpenCV格式
+                orig_image = cv2.cvtColor(np.asarray(orig_image), cv2.COLOR_RGB2BGR)
+                cv2.imshow('', orig_image)
+                # cv2.imshow(input.encode("gbk").decode(errors="ignore"), orig_image)
+                return path, whole_time, orig_image
+
+            num_person = multi_pose.shape[0]
+            if num_person >= warning_person:
+                occ_time = time.time()
+                if len(person_list) < short_recognize_windows:
+                    person_list.append(occ_time)
+                elif long_recognize_windows > len(person_list) >= short_recognize_windows:
+                    if occ_time - person_list[0] < short_interval:  # 第一次出现与这次出现时间间隔小于1800帧(1分钟),短警情
+                        # 添加调用函数输出时间,画面,知识图谱
+                        path, whole_time, cur_image = return_inf('短时间非法聚集', occ_time, orig_image)
+                    person_list.append(occ_time)
+                else:
+                    if occ_time - person_list[0] < long_interval:  # 长警情
+                        person_list.clear()
+
+                        path, whole_time, cur_image = return_inf('长时间非法聚集', occ_time, orig_image)
+                    elif occ_time - person_list[0] < short_interval:  # 短警情
+
+                        path, whole_time, cur_image = return_inf('短时间非法聚集', occ_time, orig_image)
+                    person_list.append(occ_time)
+
             # normalization
-            multi_pose[:, :, 0] = multi_pose[:, :, 0]/W
-            multi_pose[:, :, 1] = multi_pose[:, :, 1]/H
+            multi_pose[:, :, 0] = multi_pose[:, :, 0] / W
+            multi_pose[:, :, 1] = multi_pose[:, :, 1] / H
             multi_pose[:, :, 0:2] = multi_pose[:, :, 0:2] - 0.5
             multi_pose[:, :, 0][multi_pose[:, :, 2] == 0] = 0
             multi_pose[:, :, 1][multi_pose[:, :, 2] == 0] = 0
 
             # pose tracking
             if self.arg.video == 'camera_source':
-                frame_index = int((time.time() - start_time)*self.arg.model_fps)
+                frame_index = int((time.time() - start_time) * self.arg.model_fps)
             else:
                 frame_index += 1
             pose_tracker.update(multi_pose, frame_index)
@@ -122,6 +183,34 @@ class DemoRealtime(IO):
             voting_label_name, video_label_name, output, intensity = self.predict(
                 data)
 
+            # 长短警情报警（打砸、推搡、跌倒）
+            def longshort_alarm(input, alarm_list, voting_label_name):
+                short_input = '短时间' + input
+                long_input = '长时间' + input
+                occ_time = time.time()
+                if len(alarm_list) < short_recognize_windows:
+                    alarm_list.append(occ_time)
+                elif long_recognize_windows > len(alarm_list) >= short_recognize_windows:
+                    if occ_time - alarm_list[0] < short_interval:  # 第一次出现与这次出现时间间隔小于1800帧(1分钟),短警情
+                        # 调用return_inf函数输出知识图谱,时间,画面
+                        path, whole_time, cur_image = return_inf(short_input, occ_time, orig_image)
+                    alarm_list.append(occ_time)
+                else:
+                    if occ_time - alarm_list[0] < long_interval:  # 长警情
+                        alarm_list.clear()
+
+                        path, whole_time, cur_image = return_inf(long_input, occ_time, orig_image)
+                    elif occ_time - alarm_list[0] < short_interval:  # 短警情
+
+                        path, whole_time, cur_image = return_inf(short_input, occ_time, orig_image)
+                    person_list.append(occ_time)
+
+            if voting_label_name == 'Pull':
+                longshort_alarm('打架', pull_list, voting_label_name)
+            if voting_label_name == 'Smash':
+                longshort_alarm('打砸', smash_list, voting_label_name)
+            if voting_label_name == 'Fall':
+                longshort_alarm('摔倒', fall_list, voting_label_name)
             # visualization
             app_fps = 1 / (time.time() - tic)
             image = self.render(data_numpy, voting_label_name,
@@ -135,7 +224,7 @@ class DemoRealtime(IO):
         output, feature = self.model.extract_feature(data)
         output = output[0]
         feature = feature[0]
-        intensity = (feature*feature).sum(dim=0)**0.5
+        intensity = (feature * feature).sum(dim=0) ** 0.5
         intensity = intensity.cpu().detach().numpy()
 
         # get result
@@ -202,12 +291,17 @@ class DemoRealtime(IO):
                             default=1080,
                             type=int,
                             help='height of frame in the output video.')
+        parser.add_argument('--police',
+                            default=True,
+                            type=bool,
+                            help='Output alarm information or not.')
         parser.set_defaults(
             config='./config/st_gcn/kinetics-skeleton/demo_realtime.yaml')
         parser.set_defaults(print_log=False)
         # endregion yapf: enable
 
         return parser
+
 
 class naive_pose_tracker():
     """ A simple tracker for recording person poses and generating skeleton sequences.
@@ -256,7 +350,7 @@ class naive_pose_tracker():
 
                 # padding zero if the trace is fractured
                 pad_mode = 'interp' if latest_frame == self.latest_frame else 'zero'
-                pad = current_frame-latest_frame-1
+                pad = current_frame - latest_frame - 1
                 new_trace = self.cat_pose(trace, p, pad, pad_mode)
                 self.trace_info[matching_trace] = (new_trace, current_frame)
 
@@ -299,8 +393,8 @@ class naive_pose_tracker():
                     (trace, np.zeros((pad, num_joint, 3))), 0)
             elif pad_mode == 'interp':
                 last_pose = trace[-1]
-                coeff = [(p+1)/(pad+1) for p in range(pad)]
-                interp_pose = [(1-c)*last_pose + c*pose for c in coeff]
+                coeff = [(p + 1) / (pad + 1) for p in range(pad)]
+                interp_pose = [(1 - c) * last_pose + c * pose for c in coeff]
                 trace = np.concatenate((trace, interp_pose), 0)
         new_trace = np.concatenate((trace, [pose]), 0)
         return new_trace
@@ -311,7 +405,7 @@ class naive_pose_tracker():
         last_pose_xy = trace[-1, :, 0:2]
         curr_pose_xy = pose[:, 0:2]
 
-        mean_dis = ((((last_pose_xy - curr_pose_xy)**2).sum(1))**0.5).mean()
+        mean_dis = ((((last_pose_xy - curr_pose_xy) ** 2).sum(1)) ** 0.5).mean()
         wh = last_pose_xy.max(0) - last_pose_xy.min(0)
         scale = (wh[0] * wh[1]) ** 0.5 + 0.0001
         is_close = mean_dis < scale * self.max_frame_dis

@@ -53,9 +53,9 @@ def pose_estimation():  # 调用openpose识别出关节点
     params = dict(model_folder='../models', model_pose='COCO')
     opWrapper.configure(params)
     opWrapper.start()
-    #self.model.eval()
-    video_capture = cv2.VideoCapture('C:\\Users\\july\\Desktop\\thrust_in_side_kick_Trim.mp4')
-    # video_capture = cv2.VideoCapture(0)
+    # self.model.eval()
+    # video_capture = cv2.VideoCapture('C:\\Users\\july\\Desktop\\thrust_in_side_kick_Trim.mp4')
+    video_capture = cv2.VideoCapture(0)
     video_length = int(video_capture.get(cv2.CAP_PROP_FRAME_COUNT))
     pose_tracker = naive_pose_tracker(data_frame=video_length)
 

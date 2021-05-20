@@ -7,6 +7,7 @@ import numpy as np
 
 # torch
 import torch
+
 import torch.nn as nn
 import torch.optim as optim
 
@@ -67,13 +68,13 @@ class Processor(IO):
 
     def show_epoch_info(self):
         for k, v in self.epoch_info.items():
-            self.io.print_log('\t{}: {}'.format(k, v))
+            self.io.print_log('\t{}: {}'.format(k, v))  # mean_loss: 0.92XXXXXXXXXX
         if self.arg.pavi_log:
             self.io.log('train', self.meta_info['iter'], self.epoch_info)
 
     def show_iter_info(self):
         if self.meta_info['iter'] % self.arg.log_interval == 0:
-            info ='\tIter {} Done.'.format(self.meta_info['iter'])
+            info ='\tIter {} Done.'.format(self.meta_info['iter'])  # Iter 2000 Done. | loss: 0.7397 | lr: 0.001000
             for k, v in self.iter_info.items():
                 if isinstance(v, float):
                     info = info + ' | {}: {:.4f}'.format(k, v)
@@ -125,6 +126,7 @@ class Processor(IO):
                     self.io.print_log('Eval epoch: {}'.format(epoch))
                     self.test()
                     self.io.print_log('Done.')
+
         # test phase
         elif self.arg.phase == 'test':
 

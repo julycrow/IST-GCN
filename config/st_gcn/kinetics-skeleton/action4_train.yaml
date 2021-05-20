@@ -31,9 +31,9 @@ test_batch_size: 32
 
 
 #optim
-base_lr: 0.1
-step: [40, 80, 120, 150]
-num_epoch: 150
+base_lr: 0.001
+step: [60, 120, 170, 200]
+num_epoch: 200
 #step: [40, 80, 100, 120]
 #num_epoch: 120
 #step: [20, 30, 40, 50]
@@ -43,5 +43,3 @@ num_epoch: 150
 #start_epoch: 0	# 这里填写上次训练中断时的epoch，如果上次训练了5个epoch（0，1，2，3，4），那么再次训练的时候填5即可
 #save_interval: 1	 # 源码是时10个epoch保存一次模型参数weights，我设置为1
 #weights: model_path # 这里填写最近一个epoch保存的model_weights.pt文件的路径，如果不加上这个参数，则默认训练一个新的模型
-# 池化 平均和最大 互相掺杂进行实验,对比结果,得出结论
-# 池化的方法,傅里叶变换->拉普拉斯变换
