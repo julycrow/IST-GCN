@@ -104,7 +104,7 @@ def stgcn_visualize(pose,
         rgb_result[rgb_result > 255] = 255
         rgb_result.astype(np.uint8)
 
-        put_text(skeleton, 'inputs of st-gcn', (0.15, 0.5))
+        put_text(skeleton, 'skeleton', (0.15, 0.5))
 
         text_1 = cv2.imread(
             './resource/demo_asset/original_video.png', cv2.IMREAD_UNCHANGED)

@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class Graph():
     """ The Graph to model the skeletons extracted by the openpose
 
@@ -113,12 +114,9 @@ class Graph():
                 for i in range(self.num_node):
                     for j in range(self.num_node):
                         if self.hop_dis[j, i] == hop:
-                            if self.hop_dis[j, self.center] == self.hop_dis[
-                                i, self.center]:
+                            if self.hop_dis[j, self.center] == self.hop_dis[i, self.center]:
                                 a_root[j, i] = normalize_adjacency[j, i]
-                            elif self.hop_dis[j, self.
-                                    center] > self.hop_dis[i, self.
-                                    center]:
+                            elif self.hop_dis[j, self.center] > self.hop_dis[i, self.center]:
                                 a_close[j, i] = normalize_adjacency[j, i]
                             else:
                                 a_further[j, i] = normalize_adjacency[j, i]
@@ -140,12 +138,9 @@ class Graph():
                 for i in range(self.num_node - 1):
                     for j in range(self.num_node - 1):
                         if self.hop_dis[j, i] == hop:
-                            if self.hop_dis[j, self.center] == self.hop_dis[
-                                    i, self.center]:
+                            if self.hop_dis[j, self.center] == self.hop_dis[i, self.center]:
                                 a_root[j, i] = normalize_adjacency[j, i]
-                            elif self.hop_dis[j, self.
-                                              center] > self.hop_dis[i, self.
-                                                                     center]:
+                            elif self.hop_dis[j, self.center] > self.hop_dis[i, self.center]:
                                 a_close[j, i] = normalize_adjacency[j, i]
                             else:
                                 a_further[j, i] = normalize_adjacency[j, i]
@@ -202,13 +197,13 @@ def get_hop_distance(num_node, edge, max_hop=1):
     return hop_dis  # 各节点之间的路径长度--只有0和1
 
 
-def normalize_digraph(A):  # 图卷积的预处理
+def normalize_digraph(A):  # 有向图卷积的预处理
     Dl = np.sum(A, 0)  # n*n矩阵求和变为n*1
     num_node = A.shape[0]
     Dn = np.zeros((num_node, num_node))
     for i in range(num_node):
         if Dl[i] > 0:
-            Dn[i, i] = Dl[i]**(-1)  # 由每个点的度组成的对角矩阵
+            Dn[i, i] = Dl[i] ** (-1)  # 由每个点的度组成的对角矩阵
     AD = np.dot(A, Dn)  # 点乘
     return AD
 
@@ -235,12 +230,13 @@ AD
 0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.33,0.00,0.50
 '''
 
-def normalize_undigraph(A):
+
+def normalize_undigraph(A):  # 无向图
     Dl = np.sum(A, 0)
     num_node = A.shape[0]
     Dn = np.zeros((num_node, num_node))
     for i in range(num_node):
         if Dl[i] > 0:
-            Dn[i, i] = Dl[i]**(-0.5)
+            Dn[i, i] = Dl[i] ** (-0.5)
     DAD = np.dot(np.dot(Dn, A), Dn)
     return DAD

@@ -60,7 +60,7 @@ class ConvTemporalGraphical(nn.Module):
         x = self.conv(x)
 
         n, kc, t, v = x.size()
-        x = x.view(n, self.kernel_size, kc//self.kernel_size, t, v)
+        x = x.view(n, self.kernel_size, kc//self.kernel_size, t, v)  # // -> 整数除法
         x = torch.einsum('nkctv,kvw->nctw', (x, A))  # 爱因斯坦简记法：做张量运算，'nkctv,kvw->nctw'为数组下标，其中隐含含义：对k,v进行求和
 
         return x.contiguous(), A

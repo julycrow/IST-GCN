@@ -55,8 +55,10 @@ class DemoRealtime(IO):
         warning_person = 2  # 聚集人数
         long_interval = 5400  # 帧间隔(长),3分钟包含的帧数, 用来判断长警情,
         short_interval = 1800  # 帧间隔(短),1分钟包含的帧数, 用来判断短警情
-        long_recognize_windows = 180  # 识别窗口(长),用来判断长警情
+        long_recognize_windows = 180  # 识别窗口(长),用来判断长警情,出现改警情的次数
         short_recognize_windows = 45  # 识别窗口(短),用来判断短警情
+        person_counting = smash_counting = pull_counting = fall_counting = 0  # 长时间警情持续帧数
+        long_last = 180  # 长时间警情显示持续帧数
         person_list = []  # 维护这个列表来判断是否为长短警情
         smash_list = []
         pull_list = []
@@ -89,6 +91,7 @@ class DemoRealtime(IO):
 
         if self.arg.video == 'camera_source':
             video_capture = cv2.VideoCapture(0)
+            # video_capture = cv2.VideoCapture('rtsp://admin:okwy1234@192.168.1.64:554')
             # video_capture = cv2.VideoCapture(0, cv2.CAP_DSHOW)
         else:
             video_capture = cv2.VideoCapture(self.arg.video)
@@ -121,7 +124,14 @@ class DemoRealtime(IO):
                 continue
 
             # 人员聚集识别->识别人数超过规定人数,且持续一段时间
-            def return_inf(input, occ_time, orig_image):
+            def return_inf(input, occ_time, orig_image, color_input):
+
+                red = (255, 0, 0)
+                green = (0, 255, 0)
+                if color_input == 'red':
+                    color = red
+                else:
+                    color = green
                 path = visualize(input)  # graph_base.html的path(知识图谱)
                 # 输出图像, 时间
                 whole_time = time.asctime(time.localtime(occ_time))
@@ -134,7 +144,7 @@ class DemoRealtime(IO):
                 fontStyle = ImageFont.truetype(
                     "font/simsun.ttc", 20, encoding="utf-8")
                 # 绘制文本
-                draw.text((10, 10), input, (255, 0, 0), fontStyle)
+                draw.text((10, 10), input, color, fontStyle)
                 # 转换回OpenCV格式
                 orig_image = cv2.cvtColor(np.asarray(orig_image), cv2.COLOR_RGB2BGR)
                 cv2.imshow('', orig_image)
@@ -149,16 +159,19 @@ class DemoRealtime(IO):
                 elif long_recognize_windows > len(person_list) >= short_recognize_windows:
                     if occ_time - person_list[0] < short_interval:  # 第一次出现与这次出现时间间隔小于1800帧(1分钟),短警情
                         # 添加调用函数输出时间,画面,知识图谱
-                        path, whole_time, cur_image = return_inf('短时间非法聚集', occ_time, orig_image)
+                        path, whole_time, cur_image = return_inf('短时间非法聚集', occ_time, orig_image, 'green')
                     person_list.append(occ_time)
                 else:
                     if occ_time - person_list[0] < long_interval:  # 长警情
-                        person_list.clear()
-
-                        path, whole_time, cur_image = return_inf('长时间非法聚集', occ_time, orig_image)
+                        if person_counting == long_last:
+                            person_list.clear()
+                            person_counting = 0
+                        else:
+                            person_counting += 1
+                        path, whole_time, cur_image = return_inf('长时间非法聚集', occ_time, orig_image, 'red')
                     elif occ_time - person_list[0] < short_interval:  # 短警情
 
-                        path, whole_time, cur_image = return_inf('短时间非法聚集', occ_time, orig_image)
+                        path, whole_time, cur_image = return_inf('短时间非法聚集', occ_time, orig_image, 'green')
                     person_list.append(occ_time)
 
             # normalization
@@ -184,7 +197,8 @@ class DemoRealtime(IO):
                 data)
 
             # 长短警情报警（打砸、推搡、跌倒）
-            def longshort_alarm(input, alarm_list, voting_label_name):
+            def longshort_alarm(input, alarm_list, voting_label_name, counting):
+                path = whole_time = cur_image = None
                 short_input = '短时间' + input
                 long_input = '长时间' + input
                 occ_time = time.time()
@@ -193,24 +207,28 @@ class DemoRealtime(IO):
                 elif long_recognize_windows > len(alarm_list) >= short_recognize_windows:
                     if occ_time - alarm_list[0] < short_interval:  # 第一次出现与这次出现时间间隔小于1800帧(1分钟),短警情
                         # 调用return_inf函数输出知识图谱,时间,画面
-                        path, whole_time, cur_image = return_inf(short_input, occ_time, orig_image)
+                        path, whole_time, cur_image = return_inf(short_input, occ_time, orig_image, 'green')
+
                     alarm_list.append(occ_time)
                 else:
                     if occ_time - alarm_list[0] < long_interval:  # 长警情
-                        alarm_list.clear()
-
-                        path, whole_time, cur_image = return_inf(long_input, occ_time, orig_image)
+                        if counting == long_last:
+                            alarm_list.clear()
+                            counting = 0
+                        else:
+                            counting += 1
+                        path, whole_time, cur_image = return_inf(long_input, occ_time, orig_image, 'red')
                     elif occ_time - alarm_list[0] < short_interval:  # 短警情
-
-                        path, whole_time, cur_image = return_inf(short_input, occ_time, orig_image)
+                        path, whole_time, cur_image = return_inf(short_input, occ_time, orig_image, 'green')
                     person_list.append(occ_time)
+                return path, whole_time, cur_image, counting
 
             if voting_label_name == 'Pull':
-                longshort_alarm('打架', pull_list, voting_label_name)
+                path, whole_time, cur_image, pull_counting = longshort_alarm('打架', pull_list, voting_label_name, pull_counting)
             if voting_label_name == 'Smash':
-                longshort_alarm('打砸', smash_list, voting_label_name)
+                path, whole_time, cur_image, smash_counting = longshort_alarm('打砸', smash_list, voting_label_name, smash_counting)
             if voting_label_name == 'Fall':
-                longshort_alarm('摔倒', fall_list, voting_label_name)
+                path, whole_time, cur_image, fall_counting = longshort_alarm('摔倒', fall_list, voting_label_name, fall_counting)
             # visualization
             app_fps = 1 / (time.time() - tic)
             image = self.render(data_numpy, voting_label_name,

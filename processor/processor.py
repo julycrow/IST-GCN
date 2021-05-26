@@ -4,7 +4,9 @@ import sys
 import argparse
 import yaml
 import numpy as np
-
+import matplotlib.pyplot as plt
+import pylab as pl
+import pandas as pd
 # torch
 import torch
 
@@ -18,6 +20,7 @@ from torchlight import DictAction
 from torchlight import import_class
 
 from .my_io import IO
+
 
 class Processor(IO):
     """
@@ -74,7 +77,7 @@ class Processor(IO):
 
     def show_iter_info(self):
         if self.meta_info['iter'] % self.arg.log_interval == 0:
-            info ='\tIter {} Done.'.format(self.meta_info['iter'])  # Iter 2000 Done. | loss: 0.7397 | lr: 0.001000
+            info = '\tIter {} Done.'.format(self.meta_info['iter'])  # Iter 2000 Done. | loss: 0.7397 | lr: 0.001000
             for k, v in self.iter_info.items():
                 if isinstance(v, float):
                     info = info + ' | {}: {:.4f}'.format(k, v)
@@ -103,7 +106,11 @@ class Processor(IO):
 
     def start(self):
         self.io.print_log('Parameters:\n{}\n'.format(str(vars(self.arg))))
-
+        train_loss = []
+        val_loss = []
+        top1 = []
+        train_epoch = []
+        val_epoch = []
         # training phase
         if self.arg.phase == 'train':
             for epoch in range(self.arg.start_epoch, self.arg.num_epoch):
@@ -111,7 +118,10 @@ class Processor(IO):
 
                 # training
                 self.io.print_log('Training epoch: {}'.format(epoch))
-                self.train()
+                # self.train()
+                train_loss.append(self.train())
+                train_epoch.append(epoch)
+
                 self.io.print_log('Done.')
 
                 # save model
@@ -124,8 +134,42 @@ class Processor(IO):
                 if ((epoch + 1) % self.arg.eval_interval == 0) or (
                         epoch + 1 == self.arg.num_epoch):
                     self.io.print_log('Eval epoch: {}'.format(epoch))
-                    self.test()
+                    # self.test()
+                    val, top = self.test()
+                    val_loss.append(val)
+                    top1.append(top)
+                    val_epoch.append(epoch)
                     self.io.print_log('Done.')
+
+            # 画图
+            plt.figure(1)
+            plt.plot(train_epoch, train_loss, 'g-', label="train_loss")
+            plt.plot(val_epoch, val_loss, 'r-', label="val_loss")
+            plt.title('train_loss and val_loss')
+            plt.xlabel('epoch')
+            plt.ylabel('loss')
+            plt.legend(loc='best')
+            # plt.show()
+            plt.figure(2)
+            plt.plot(val_epoch, top1, 'b-', label="acc")
+            # plt.ylim((0, None))  # 纵坐标从0开始
+            plt.ylim((0, 100))  # 纵坐标范围:0-100
+            plt.title('acc')
+            plt.xlabel('epoch')
+            plt.ylabel('acc')
+            plt.legend(loc='best')
+            plt.show()
+            # 保存为csv
+            max_len = max(len(train_epoch), len(train_loss), len(val_epoch), len(val_loss), len(top1))
+            train_epoch.extend((max_len - len(train_epoch)) * [''])
+            train_loss.extend((max_len - len(train_loss)) * [''])
+            val_epoch.extend((max_len - len(val_epoch)) * [''])
+            val_loss.extend((max_len - len(val_loss)) * [''])
+            top1.extend((max_len - len(top1)) * [''])
+            dataframe = pd.DataFrame(
+                {'train_epoch': train_epoch, 'train_loss': train_loss, 'val_epoch': val_epoch, 'val_loss': val_loss,
+                 'acc': top1})
+            dataframe.to_csv(self.arg.work_dir + r"/loss-acc.csv", sep=',')
 
         # test phase
         elif self.arg.phase == 'test':
@@ -151,25 +195,30 @@ class Processor(IO):
     @staticmethod
     def get_parser(add_help=False):
 
-        #region arguments yapf: disable
+        # region arguments yapf: disable
         # parameter priority: command line > config > default
-        parser = argparse.ArgumentParser( add_help=add_help, description='Base Processor')
+        parser = argparse.ArgumentParser(add_help=add_help, description='Base Processor')
 
         parser.add_argument('-w', '--work_dir', default='./work_dir/tmp', help='the work folder for storing results')
         parser.add_argument('-c', '--config', default=None, help='path to the configuration file')
 
         # processor
         parser.add_argument('--phase', default='train', help='must be train or test')
-        parser.add_argument('--save_result', type=str2bool, default=False, help='if ture, the output of the model will be stored')
+        parser.add_argument('--save_result', type=str2bool, default=False,
+                            help='if ture, the output of the model will be stored')
         parser.add_argument('--start_epoch', type=int, default=0, help='start training from which epoch')
         parser.add_argument('--num_epoch', type=int, default=80, help='stop training in which epoch')
         parser.add_argument('--use_gpu', type=str2bool, default=True, help='use GPUs or not')
-        parser.add_argument('--device', type=int, default=0, nargs='+', help='the indexes of GPUs for training or testing')
+        parser.add_argument('--device', type=int, default=0, nargs='+',
+                            help='the indexes of GPUs for training or testing')
 
         # visulize and debug
-        parser.add_argument('--log_interval', type=int, default=100, help='the interval for printing messages (#iteration)')
-        parser.add_argument('--save_interval', type=int, default=10, help='the interval for storing models (#iteration)')
-        parser.add_argument('--eval_interval', type=int, default=5, help='the interval for evaluating models (#iteration)')
+        parser.add_argument('--log_interval', type=int, default=100,
+                            help='the interval for printing messages (#iteration)')
+        parser.add_argument('--save_interval', type=int, default=10,
+                            help='the interval for storing models (#iteration)')
+        parser.add_argument('--eval_interval', type=int, default=5,
+                            help='the interval for evaluating models (#iteration)')
         parser.add_argument('--save_log', type=str2bool, default=True, help='save logging or not')
         parser.add_argument('--print_log', type=str2bool, default=True, help='print logging or not')
         parser.add_argument('--pavi_log', type=str2bool, default=False, help='logging on pavi or not')
@@ -177,8 +226,10 @@ class Processor(IO):
         # feeder
         parser.add_argument('--feeder', default='feeder.feeder', help='data loader will be used')
         parser.add_argument('--num_worker', type=int, default=0, help='the number of worker per gpu for data loader')
-        parser.add_argument('--train_feeder_args', action=DictAction, default=dict(), help='the arguments of data loader for training')
-        parser.add_argument('--test_feeder_args', action=DictAction, default=dict(), help='the arguments of data loader for test')
+        parser.add_argument('--train_feeder_args', action=DictAction, default=dict(),
+                            help='the arguments of data loader for training')
+        parser.add_argument('--test_feeder_args', action=DictAction, default=dict(),
+                            help='the arguments of data loader for test')
         parser.add_argument('--batch_size', type=int, default=256, help='training batch size')
         parser.add_argument('--test_batch_size', type=int, default=256, help='test batch size')
         parser.add_argument('--debug', action="store_true", help='less data, faster loading')
@@ -187,7 +238,8 @@ class Processor(IO):
         parser.add_argument('--model', default=None, help='the model will be used')
         parser.add_argument('--model_args', action=DictAction, default=dict(), help='the arguments of model')
         parser.add_argument('--weights', default=None, help='the weights for network initialization')
-        parser.add_argument('--ignore_weights', type=str, default=[], nargs='+', help='the name of weights which will be ignored in the initialization')
-        #endregion yapf: enable
+        parser.add_argument('--ignore_weights', type=str, default=[], nargs='+',
+                            help='the name of weights which will be ignored in the initialization')
+        # endregion yapf: enable
 
         return parser
