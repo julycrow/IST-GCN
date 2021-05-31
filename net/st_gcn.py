@@ -168,7 +168,7 @@ class st_gcn(nn.Module):
                 padding,  # 填充
             ),
             nn.BatchNorm2d(out_channels),
-            nn.Dropout(dropout, inplace=True),
+            nn.Dropout(dropout, inplace=True),  # inplace=True->在通过relu()计算时的得到的新值不会占用新的空间而是直接覆盖原来的值，为False则相反
         )
 
         if not residual:  # 每一个st-gcn层都用residual残差模块来改进

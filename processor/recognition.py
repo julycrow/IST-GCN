@@ -2,6 +2,8 @@
 # pylint: disable=W0201
 import sys
 import argparse
+import time
+
 import yaml
 import numpy as np
 
@@ -84,10 +86,14 @@ class REC_Processor(Processor):
         loader = self.data_loader['train']  # 将.npy中的数据传进来
         # print(loader)
         loss_value = []
-
+        i = 0
+        accumulation_steps = 4
+        start_time = time.time()
         for data, label in loader:
             # get data
-            data = data.float().to(self.dev)  # tensor  data.shape = (64, 3, 150, 18, 2)在这里加重心点
+            data = data.float().to(self.dev, non_blocking=True)  # tensor  data.shape = (64, 3, 150, 18, 2)在这里加重心点
+            # data = data.float().to(self.dev)
+            # 将pin_memory(processor.py line 64)开启后，在通过dataloader读取数据后将数据to进GPU时把non_blocking设置为True，可以大幅度加快数据计算的速度。
 
             # gravity = torch.sum(data, dim=3)  # gravity为第19个关节点,即重心点,取前十八个的平均值
             # gravity /= 18
@@ -97,13 +103,20 @@ class REC_Processor(Processor):
             label = label.long().to(self.dev)
 
             # forward
-            output = self.model(data)  # 这里出的问题
-            loss = self.loss(output, label)
+            output = self.model(data)  # 前向传播
+            loss = self.loss(output, label)  # 计算损失
 
             # backward
-            self.optimizer.zero_grad()
-            loss.backward()
-            self.optimizer.step()
+
+            # loss.backward()  # 计算梯度
+            # # 梯度累计减少显存占用
+            # if ((i + 1) % accumulation_steps) == 0:
+            #     self.optimizer.step()  # 反向传播， 更新网络参数
+            #     self.optimizer.zero_grad()  # 清空梯度
+            i += 1
+            self.optimizer.zero_grad()  # 清空梯度
+            loss.backward()  # 计算梯度
+            self.optimizer.step()  # 反向传播， 更新网络参数
 
             # statistics  #　统计数字
             self.iter_info['loss'] = loss.data.item()
@@ -115,11 +128,11 @@ class REC_Processor(Processor):
         self.epoch_info['mean_loss'] = np.mean(loss_value)
         train_loss_one = float(np.mean(loss_value))
         self.show_epoch_info()
-        self.io.print_timer()
+        self.io.print_log('Time consumption: ' + str(time.time() - start_time))
+        # self.io.print_timer()
         return train_loss_one
 
     def test(self, evaluation=True):
-
         self.model.eval()  # 不使用BatchNormalizetion()和Dropout()
         loader = self.data_loader['test']
         loss_value = []

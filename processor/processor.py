@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # pylint: disable=W0201
+import os
 import sys
 import argparse
 import yaml
@@ -60,12 +61,16 @@ class Processor(IO):
                 shuffle=True,  # 将输入数据的顺序打乱，是为了使数据更有独立性
                 num_workers=self.arg.num_worker * torchlight.ngpu(  # 工作者数量，默认是0。使用多少个子进程来导入数据。
                     self.arg.device),
+                pin_memory=True,
+                # 将pin_memory开启后，在通过dataloader(recognition.py line 92)读取数据后将数据to进GPU时把non_blocking设置为True，可以大幅度加快数据计算的速度。
                 drop_last=True)  # 丢弃最后数据，默认为False。设置了 batch_size 的数目后，最后一批数据未必是设置的数目，有可能会小些。这时你是否需要丢弃这批数据。
         if self.arg.test_feeder_args:
             self.data_loader['test'] = torch.utils.data.DataLoader(
                 dataset=Feeder(**self.arg.test_feeder_args),
                 batch_size=self.arg.test_batch_size,
                 shuffle=False,
+                pin_memory=True,
+                # 将pin_memory开启后，在通过dataloader(recognition.py line 92)读取数据后将数据to进GPU时把non_blocking设置为True，可以大幅度加快数据计算的速度。
                 num_workers=self.arg.num_worker * torchlight.ngpu(
                     self.arg.device))
 
@@ -103,6 +108,45 @@ class Processor(IO):
             self.show_iter_info()
         self.epoch_info['mean loss'] = 1
         self.show_epoch_info()
+
+    def plot_line(self, train_epoch, train_loss, val_epoch, val_loss, top1):
+        plt.figure(1)
+        plt.plot(train_epoch, train_loss, 'g-', label="train_loss")
+        plt.plot(val_epoch, val_loss, 'r-', label="val_loss")
+        plt.title('train_loss and val_loss')
+        plt.xlabel('epoch')
+        plt.ylabel('loss')
+        plt.legend(loc='best')
+        plt.savefig(self.arg.work_dir + r'/loss.jpg')
+        plt.show()
+
+        plt.figure(2)
+        plt.plot(val_epoch, top1, 'b-', label="acc")
+        acc_max = top1.index(max(top1))
+        show_max = '[' + str(acc_max) + ' ' + str(top1[acc_max]) + ']'
+        plt.plot(val_epoch[acc_max], top1[acc_max], 'go')
+        plt.annotate(show_max, xy=(val_epoch[acc_max], top1[acc_max]), xytext=(val_epoch[acc_max], top1[acc_max]))
+        # plt.ylim((0, None))  # 纵坐标从0开始
+        plt.ylim((0, 100))  # 纵坐标范围:0-100
+        plt.title('acc')
+        plt.xlabel('epoch')
+        plt.ylabel('acc')
+        plt.legend(loc='best')
+        plt.savefig(self.arg.work_dir + r'/acc.jpg')
+        plt.show()
+        return top1[acc_max]
+
+    def save_csv(self, train_epoch, train_loss, val_epoch, val_loss, top1):
+        max_len = max(len(train_epoch), len(train_loss), len(val_epoch), len(val_loss), len(top1))
+        train_epoch.extend((max_len - len(train_epoch)) * [''])
+        train_loss.extend((max_len - len(train_loss)) * [''])
+        val_epoch.extend((max_len - len(val_epoch)) * [''])
+        val_loss.extend((max_len - len(val_loss)) * [''])
+        top1.extend((max_len - len(top1)) * [''])
+        dataframe = pd.DataFrame(
+            {'train_epoch': train_epoch, 'train_loss': train_loss, 'val_epoch': val_epoch, 'val_loss': val_loss,
+             'acc': top1})
+        dataframe.to_csv(self.arg.work_dir + r"/loss-acc.csv", sep=',')
 
     def start(self):
         self.io.print_log('Parameters:\n{}\n'.format(str(vars(self.arg))))
@@ -142,35 +186,13 @@ class Processor(IO):
                     self.io.print_log('Done.')
 
             # 画图
-            plt.figure(1)
-            plt.plot(train_epoch, train_loss, 'g-', label="train_loss")
-            plt.plot(val_epoch, val_loss, 'r-', label="val_loss")
-            plt.title('train_loss and val_loss')
-            plt.xlabel('epoch')
-            plt.ylabel('loss')
-            plt.legend(loc='best')
-            # plt.show()
-            plt.figure(2)
-            plt.plot(val_epoch, top1, 'b-', label="acc")
-            # plt.ylim((0, None))  # 纵坐标从0开始
-            plt.ylim((0, 100))  # 纵坐标范围:0-100
-            plt.title('acc')
-            plt.xlabel('epoch')
-            plt.ylabel('acc')
-            plt.legend(loc='best')
-            plt.show()
+            acc_max = self.plot_line(train_epoch, train_loss, val_epoch, val_loss, top1)
             # 保存为csv
-            max_len = max(len(train_epoch), len(train_loss), len(val_epoch), len(val_loss), len(top1))
-            train_epoch.extend((max_len - len(train_epoch)) * [''])
-            train_loss.extend((max_len - len(train_loss)) * [''])
-            val_epoch.extend((max_len - len(val_epoch)) * [''])
-            val_loss.extend((max_len - len(val_loss)) * [''])
-            top1.extend((max_len - len(top1)) * [''])
-            dataframe = pd.DataFrame(
-                {'train_epoch': train_epoch, 'train_loss': train_loss, 'val_epoch': val_epoch, 'val_loss': val_loss,
-                 'acc': top1})
-            dataframe.to_csv(self.arg.work_dir + r"/loss-acc.csv", sep=',')
-
+            self.save_csv(train_epoch, train_loss, val_epoch, val_loss, top1)
+            # 保存路径重命名，包含batch_size, epoch, max_acc的信息
+            new_path = self.arg.work_dir + '_' + str(self.arg.batch_size) + '_' + str(self.arg.num_epoch) + '_' + str(
+                acc_max)
+            os.rename(self.arg.work_dir, new_path)
         # test phase
         elif self.arg.phase == 'test':
 
