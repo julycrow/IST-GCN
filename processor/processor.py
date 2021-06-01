@@ -61,7 +61,7 @@ class Processor(IO):
                 shuffle=True,  # 将输入数据的顺序打乱，是为了使数据更有独立性
                 num_workers=self.arg.num_worker * torchlight.ngpu(  # 工作者数量，默认是0。使用多少个子进程来导入数据。
                     self.arg.device),
-                pin_memory=True,
+                # pin_memory=True,
                 # 将pin_memory开启后，在通过dataloader(recognition.py line 92)读取数据后将数据to进GPU时把non_blocking设置为True，可以大幅度加快数据计算的速度。
                 drop_last=True)  # 丢弃最后数据，默认为False。设置了 batch_size 的数目后，最后一批数据未必是设置的数目，有可能会小些。这时你是否需要丢弃这批数据。
         if self.arg.test_feeder_args:
@@ -69,7 +69,7 @@ class Processor(IO):
                 dataset=Feeder(**self.arg.test_feeder_args),
                 batch_size=self.arg.test_batch_size,
                 shuffle=False,
-                pin_memory=True,
+                # pin_memory=True,
                 # 将pin_memory开启后，在通过dataloader(recognition.py line 92)读取数据后将数据to进GPU时把non_blocking设置为True，可以大幅度加快数据计算的速度。
                 num_workers=self.arg.num_worker * torchlight.ngpu(
                     self.arg.device))
@@ -123,7 +123,7 @@ class Processor(IO):
         plt.figure(2)
         plt.plot(val_epoch, top1, 'b-', label="acc")
         acc_max = top1.index(max(top1))
-        show_max = '[' + str(acc_max) + ' ' + str(top1[acc_max]) + ']'
+        show_max = '[' + str(val_epoch[acc_max]) + ' ' + str(top1[acc_max]) + ']'
         plt.plot(val_epoch[acc_max], top1[acc_max], 'go')
         plt.annotate(show_max, xy=(val_epoch[acc_max], top1[acc_max]), xytext=(val_epoch[acc_max], top1[acc_max]))
         # plt.ylim((0, None))  # 纵坐标从0开始
