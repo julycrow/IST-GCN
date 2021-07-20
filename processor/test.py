@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+from torchsummary import summary
 data_dir = "D:\\result.txt"
 Train_Loss_list = []
 Train_Accuracy_list = []
@@ -9,7 +10,6 @@ x1 = range(0, 30)
 
 y1 = range(0, 30)
 y2 = range(0, 60, 2)
-
 #plt.subplot(2, 1, 1)
 # plt.plot(x1, y1, 'o-',color='r')
 plt.plot(x1, y1, 'b-',label="Train_Accuracy")

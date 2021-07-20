@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import os
 
-data_dir = r"D:\PycharmProject\st-gcn\work_dir\recognition\kinetics_skeleton\ST_GCN_64_120_quick\loss-acc.csv"
+data_dir = r"D:\PycharmProject\st-gcn\work_dir\recognition\kinetics_skeleton\ST_GCN_64_50_31.63\loss-acc.csv"
 f = open(data_dir, encoding='UTF-8')
 data = pd.read_csv(f)  # 将csv文件读入并转化为dataframe形式
 
@@ -59,4 +59,4 @@ plt.show()
 f.close()
 path = r"D:\PycharmProject\st-gcn\work_dir\recognition\kinetics_skeleton\ST_GCN_64_120_quick"
 new_path = path + '_' + str(top1[acc_max])
-os.rename(path, new_path)
+# os.rename(path, new_path)

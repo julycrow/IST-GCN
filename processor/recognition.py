@@ -45,7 +45,7 @@ class REC_Processor(Processor):
         self.model = self.io.load_model(self.arg.model,
                                         **(self.arg.model_args))
         self.model.apply(weights_init)
-        self.loss = nn.CrossEntropyLoss()
+        self.loss = nn.CrossEntropyLoss()  # 交叉熵
 
     def load_optimizer(self):  # 训练器
         if self.arg.optimizer == 'SGD':
@@ -81,7 +81,7 @@ class REC_Processor(Processor):
         return '%.2f' % (100 * accuracy)
 
     def train(self):
-        self.model.train()  # 使用BatchNormalizetion()和Dropout()  pytorch中的model.train（）
+        self.model.train()  # 使用BatchNormalizetion()和Dropout()  pytorch中的model.train()
         self.adjust_lr()
         loader = self.data_loader['train']  # 将.npy中的数据传进来
         # print(loader)
@@ -103,6 +103,7 @@ class REC_Processor(Processor):
             label = label.long().to(self.dev)
 
             # forward
+            # output = self.model(data, num_class=self.arg.model_args['num_class'])  # 前向传播
             output = self.model(data)  # 前向传播
             loss = self.loss(output, label)  # 计算损失
 

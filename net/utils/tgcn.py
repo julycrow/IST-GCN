@@ -30,9 +30,11 @@ class ConvTemporalGraphical(nn.Module):
             :math:`N` is a batch size,
             :math:`K` is the spatial kernel size, as :math:`K == kernel_size[1]`,
             :math:`T_{in}/T_{out}` is a length of input/output sequence,
-            :math:`V` is the number of graph nodes. 
+            :math:`V` is the number of graph nodes.
     """
-
+    """
+    需要用三个卷积核，都是一个1*1卷积核，但是输出通道是不同的，分别乘上三种不同距离邻接矩阵A，得到三种距离的关系，然后拼接在一起
+    """
     def __init__(self,
                  in_channels,
                  out_channels,
@@ -44,15 +46,31 @@ class ConvTemporalGraphical(nn.Module):
                  bias=True):
         super().__init__()
 
-        self.kernel_size = kernel_size
-        self.conv = nn.Conv2d(
+        self.kernel_size = kernel_size  # 卷积核数(向心离心静止), 不是卷积核大小
+        self.conv = nn.Conv2d(  # 距离为1的卷积
             in_channels,
             out_channels * kernel_size,
-            kernel_size=(t_kernel_size, 1),  # 两个数分别作用在高和宽两个维度
+            kernel_size=(t_kernel_size, 1),  # 两个数分别作用在高和宽两个维度, 为1*1的卷积核,只能提取到自己的空间特征, 加入inception之后,可以提取到自己和周围节点的
             padding=(t_padding, 0),
             stride=(t_stride, 1),
-            dilation=(t_dilation, 1),
+            dilation=(t_dilation, 1),  # 空洞卷积，默认为1（不采用），从卷积核上的一个参数到另一个参数需要走过的距离
             bias=bias)
+        # self.conv2 = nn.Conv2d(  # 距离为2的卷积
+        #     in_channels,
+        #     out_channels * kernel_size,
+        #     kernel_size=(2, 1),  # 两个数分别作用在高和宽两个维度, 为1*1的卷积核,只能提取到自己的空间特征, 加入inception之后,可以提取到自己和周围节点的
+        #     padding=(1, 0),
+        #     stride=(t_stride, 1),
+        #     dilation=(t_dilation, 1),
+        #     bias=bias)
+        # self.conv3 = nn.Conv2d(  # 距离为3的卷积
+        #     in_channels,
+        #     out_channels * kernel_size,
+        #     kernel_size=(3, 1),  # 两个数分别作用在高和宽两个维度, 为1*1的卷积核,只能提取到自己的空间特征, 加入inception之后,可以提取到自己和周围节点的
+        #     padding=(2, 0),
+        #     stride=(t_stride, 1),
+        #     dilation=(t_dilation, 1),
+        #     bias=bias)
 
     def forward(self, x, A):
         assert A.size(0) == self.kernel_size
@@ -61,6 +79,6 @@ class ConvTemporalGraphical(nn.Module):
 
         n, kc, t, v = x.size()
         x = x.view(n, self.kernel_size, kc//self.kernel_size, t, v)  # // -> 整数除法
-        x = torch.einsum('nkctv,kvw->nctw', (x, A))  # 爱因斯坦简记法：做张量运算，'nkctv,kvw->nctw'为数组下标，其中隐含含义：对k,v进行求和
+        x = torch.einsum('nkctv,kvw->nctw', [x, A])  # 爱因斯坦简记法：做张量运算，'nkctv,kvw->nctw'为数组下标，其中隐含含义：对k,v进行求和
 
         return x.contiguous(), A
