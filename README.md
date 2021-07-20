@@ -1,4 +1,4 @@
-## Reminder
+## README
 
 
 fork form [ST-GCN](https://github.com/yysijie/st-gcn)
