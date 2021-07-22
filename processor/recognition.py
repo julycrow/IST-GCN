@@ -27,7 +27,8 @@ def weights_init(m):
         m.weight.data.normal_(0.0, 0.02)
         if m.bias is not None:
             m.bias.data.fill_(0)
-    elif classname.find('Conv2d') != -1:
+    # elif classname.find('Conv2d') != -1:
+    elif type(m) == nn.Conv2d:
         m.weight.data.normal_(0.0, 0.02)
         if m.bias is not None:
             m.bias.data.fill_(0)

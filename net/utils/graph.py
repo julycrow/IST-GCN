@@ -196,6 +196,7 @@ class Graph():
             A = np.stack(A)
             A2 = get_A(A, normalize_adjacency2, self.adjacency_matrix, self.num_node, self.kernel_size)
             A3 = get_A(A2, normalize_adjacency3, self.adjacency_matrix, self.num_node, self.kernel_size)
+            A = every_symmetric(A, normalize_adjacency2, self.num_node, self.spatial_symmetric)
             A2 = every_symmetric(A2, normalize_adjacency2, self.num_node, self.spatial_symmetric)
             A3 = every_symmetric(A3, normalize_adjacency3, self.num_node, self.spatial_symmetric)
             self.A = A

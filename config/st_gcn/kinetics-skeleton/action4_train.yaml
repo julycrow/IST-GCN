@@ -1,4 +1,4 @@
-work_dir: ./work_dir/recognition/kinetics_skeleton/st_gcn_normal_adam
+work_dir: ./work_dir/recognition/kinetics_skeleton/st_gcn_normal_sgd
 
 # feeder
 feeder: feeder.feeder.Feeder
@@ -26,17 +26,18 @@ model_args:
 
 # training
 device: [0]  # 单个cpu
-batch_size: 32
+batch_size: 16
 test_batch_size: 32
 
 
 #optim
 #base_lr: 0.1
-base_lr: 0.01
+base_lr: 0.1
 #step: [60, 120, 170, 200]
 #num_epoch: 200
-step: [20, 40, 90, 120]
-num_epoch: 120
+#step: [20, 50, 90, 120]
+step: [20, 30, 40, 50]
+num_epoch: 50
 
 #step: [20, 30, 40, 50]
 #num_epoch: 20
