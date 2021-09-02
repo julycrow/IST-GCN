@@ -74,9 +74,9 @@ if __name__ == '__main__':
     #     '--data_path', default='data/Kinetics/kinetics-skeleton')
 
     parser.add_argument(
-        '--data_path', default='D:/database/action4base')
+        '--data_path', default='D:/backup/数据集/Agri_4')
     parser.add_argument(
-        '--out_folder', default='D:/database/action4base')
+        '--out_folder', default='D:/backup/数据集/Agri_4')
     arg = parser.parse_args()
 
     part = ['train', 'val']

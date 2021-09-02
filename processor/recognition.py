@@ -20,7 +20,6 @@ from torchlight import import_class
 
 from .processor import Processor
 
-
 def weights_init(m):
     classname = m.__class__.__name__
     if classname.find('Conv1d') != -1:
@@ -92,8 +91,8 @@ class REC_Processor(Processor):
         start_time = time.time()
         for data, label in loader:
             # get data
-            # data = data.float().to(self.dev, non_blocking=True)  # tensor  data.shape = (64, 3, 150, 18, 2)在这里加重心点
-            data = data.float().to(self.dev)
+            data = data.float().to(self.dev, non_blocking=True)  # tensor  data.shape = (64, 3, 150, 18, 2)在这里加重心点
+            # data = data.float().to(self.dev)
             # 将pin_memory(processor.py line 64)开启后，在通过dataloader读取数据后将数据to进GPU时把non_blocking设置为True，可以大幅度加快数据计算的速度。
 
             # gravity = torch.sum(data, dim=3)  # gravity为第19个关节点,即重心点,取前十八个的平均值
@@ -144,7 +143,8 @@ class REC_Processor(Processor):
         for data, label in loader:
 
             # get data
-            data = data.float().to(self.dev)
+            # data = data.float().to(self.dev)
+            data = data.float().to(self.dev, non_blocking=True)  # tensor  data.shape = (64, 3, 150, 18, 2)在这里加重心点
 
             # gravity = torch.sum(data, dim=3)  # gravity为第19个关节点,即重心点,取前十八个的平均值
             # gravity /= 18

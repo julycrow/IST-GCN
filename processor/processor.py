@@ -30,6 +30,11 @@ class Processor(IO):
 
     def __init__(self, argv=None):
 
+        self.val_epoch = []
+        self.train_epoch = []
+        self.top1 = []
+        self.val_loss = []
+        self.train_loss = []
         self.load_arg(argv)
         self.init_environment()
         self.load_model()
@@ -69,7 +74,7 @@ class Processor(IO):
                 dataset=Feeder(**self.arg.test_feeder_args),
                 batch_size=self.arg.test_batch_size,
                 shuffle=False,
-                # pin_memory=True,
+                pin_memory=True,
                 # 将pin_memory开启后，在通过dataloader(recognition.py line 92)读取数据后将数据to进GPU时把non_blocking设置为True，可以大幅度加快数据计算的速度。
                 num_workers=self.arg.num_worker * torchlight.ngpu(
                     self.arg.device))
@@ -150,11 +155,6 @@ class Processor(IO):
 
     def start(self):
         self.io.print_log('Parameters:\n{}\n'.format(str(vars(self.arg))))
-        train_loss = []
-        val_loss = []
-        top1 = []
-        train_epoch = []
-        val_epoch = []
         # training phase
         if self.arg.phase == 'train':
             for epoch in range(self.arg.start_epoch, self.arg.num_epoch):
@@ -163,8 +163,8 @@ class Processor(IO):
                 # training
                 self.io.print_log('Training epoch: {}'.format(epoch))
                 # self.train()
-                train_loss.append(self.train())
-                train_epoch.append(epoch)
+                self.train_loss.append(self.train())
+                self.train_epoch.append(epoch)
 
                 self.io.print_log('Done.')
 
@@ -180,15 +180,15 @@ class Processor(IO):
                     self.io.print_log('Eval epoch: {}'.format(epoch))
                     # self.test()
                     val, top = self.test()
-                    val_loss.append(val)
-                    top1.append(top)
-                    val_epoch.append(epoch)
+                    self.val_loss.append(val)
+                    self.top1.append(top)
+                    self.val_epoch.append(epoch)
                     self.io.print_log('Done.')
 
             # 画图
-            acc_max = self.plot_line(train_epoch, train_loss, val_epoch, val_loss, top1)
+            acc_max = self.plot_line(self.train_epoch, self.train_loss, self.val_epoch, self.val_loss, self.top1)
             # 保存为csv
-            self.save_csv(train_epoch, train_loss, val_epoch, val_loss, top1)
+            self.save_csv(self.train_epoch, self.train_loss, self.val_epoch, self.val_loss, self.top1)
             # 保存路径重命名，包含batch_size, epoch, max_acc的信息
             new_path = self.arg.work_dir + '_' + str(self.arg.batch_size) + '_' + str(self.arg.num_epoch) + '_' + str(
                 acc_max)

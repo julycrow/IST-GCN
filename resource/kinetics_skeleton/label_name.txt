@@ -1,4 +1,5 @@
-Fall
-Push
-Smash
-Walk
+Pick
+Sow
+Spray
+Hoe
+Cut
