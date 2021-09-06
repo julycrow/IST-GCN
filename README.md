@@ -8,5 +8,4 @@ use inception to improve GCN
 not done
 
 
-Address of the [Agri5 dataset](https://drive.google.com/file/d/17usu_ZE4Ac4KbXGg8jWsWRl0dLd8IJz8/view?usp=sharing):https://drive.google.com/file/d/17usu_ZE4Ac4KbXGg8jWsWRl0dLd8IJz8/view?usp=sharing
-
+[Agri5 dataset](https://drive.google.com/file/d/17usu_ZE4Ac4KbXGg8jWsWRl0dLd8IJz8/view?usp=sharing) 
