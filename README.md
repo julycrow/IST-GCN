@@ -1,7 +1,7 @@
 ## README
+# IST-GCN
 
-
-fork form [ST-GCN](https://github.com/yysijie/st-gcn)
+Based on [ST-GCN](https://github.com/yysijie/st-gcn)
 
 Different:
 - Partition strategy that increases symmetry
