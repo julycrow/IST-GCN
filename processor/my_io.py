@@ -84,8 +84,8 @@ class IO():
 
         # model parallel
         if self.arg.use_gpu and len(self.gpus) > 1:
-            self.model = nn.DataParallel(self.model, device_ids=self.gpus)
-
+            self.model = nn.DataParallel(self.model, device_ids=self.gpus, output_device=self.gpus)
+            # self.model = nn.DataParallel(self.model, device_ids=self.gpus)
     def start(self):
         self.io.print_log('Parameters:\n{}\n'.format(str(vars(self.arg))))
 

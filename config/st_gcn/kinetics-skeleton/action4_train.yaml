@@ -19,15 +19,15 @@ model_args:
   num_class: 4
   edge_importance_weighting: True
   graph_args:
-    layout: 'openpose_symmetric'
-    strategy: 'spatial_symmetric'
-#    layout: 'openpose'
-#    strategy: 'spatial'
+#    layout: 'openpose_symmetric'
+#    strategy: 'spatial_symmetric'
+    layout: 'openpose'
+    strategy: 'spatial'
 
 # training
 device: [0]  # 单个cpu
 batch_size: 16
-test_batch_size: 32
+test_batch_size: 16
 
 
 #optim
@@ -37,7 +37,7 @@ base_lr: 0.1
 #num_epoch: 200
 #step: [20, 50, 90, 120]
 step: [20, 30, 40, 50]
-num_epoch: 50
+num_epoch: 10
 
 #step: [20, 30, 40, 50]
 #num_epoch: 20

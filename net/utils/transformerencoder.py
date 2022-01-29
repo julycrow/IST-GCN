@@ -9,7 +9,6 @@ class TransFormerEncoder(nn.Module):
                  out_channels,
 
                  stride=1
-                 # graph_args
                  ):
         super().__init__()
         # self.graph = Graph(**graph_args)
@@ -42,7 +41,7 @@ class TransFormerEncoder(nn.Module):
 
         x = x.view(T, N * C, W)
         # x = self.data_bn(x)
-        x = self.encoder(x)
+        x, _ = self.encoder(x)
         # x = x.view(T, W, N, C)
         x = x.view(T, N, C, W)
         # x = x.permute(2, 3, 0, 1)

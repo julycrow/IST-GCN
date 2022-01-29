@@ -1,13 +1,14 @@
 # weights: ./models/st_gcn.kinetics.pt
 #weights: D:\PycharmProject\st-gcn\work_dir\recognition\kinetics_skeleton\ST_GCN/epoch150_model.pt
-weights: D:\PycharmProject\st-gcn\work_dir\recognition\kinetics_skeleton\st_gcn_64_50\epoch150_model.pt
+#weights: D:\PycharmProject\st-gcn\work_dir\recognition\kinetics_skeleton\st_gcn_64_50\epoch150_model.pt
+weights: D:\PycharmProject\st-gcn\work_dir\recognition\kinetics_skeleton\st_gcn_agri5_32_60_85.84_spatial\epoch40_model.pt
 model_fps: 30
 
 # model
 model: net.st_gcn.Model
 model_args:
   in_channels: 3
-  num_class: 4
+  num_class: 5
   edge_importance_weighting: True
   graph_args:
     layout: 'openpose'

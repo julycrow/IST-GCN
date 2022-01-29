@@ -21,6 +21,7 @@ from torchlight import DictAction
 from torchlight import import_class
 
 from .my_io import IO
+from torch.utils.tensorboard import SummaryWriter
 
 
 class Processor(IO):
@@ -35,6 +36,7 @@ class Processor(IO):
         self.top1 = []
         self.val_loss = []
         self.train_loss = []
+
         self.load_arg(argv)
         self.init_environment()
         self.load_model()
@@ -42,6 +44,7 @@ class Processor(IO):
         self.gpu()
         self.load_data()
         self.load_optimizer()
+
 
     def init_environment(self):
 
@@ -143,19 +146,27 @@ class Processor(IO):
 
     def save_csv(self, train_epoch, train_loss, val_epoch, val_loss, top1):
         max_len = max(len(train_epoch), len(train_loss), len(val_epoch), len(val_loss), len(top1))
-        train_epoch.extend((max_len - len(train_epoch)) * [''])
+        train_epoch.extend((max_len - len(train_epoch)) * [''])  # 补齐
         train_loss.extend((max_len - len(train_loss)) * [''])
         val_epoch.extend((max_len - len(val_epoch)) * [''])
         val_loss.extend((max_len - len(val_loss)) * [''])
         top1.extend((max_len - len(top1)) * [''])
         dataframe = pd.DataFrame(
             {'train_epoch': train_epoch, 'train_loss': train_loss, 'val_epoch': val_epoch, 'val_loss': val_loss,
-             'acc': top1})
+             'acc': top1})  # 二维表
         dataframe.to_csv(self.arg.work_dir + r"/loss-acc.csv", sep=',')
 
     def start(self):
         self.io.print_log('Parameters:\n{}\n'.format(str(vars(self.arg))))
         # training phase
+
+        self.writer = SummaryWriter(log_dir='run/action4')
+
+        # graph_input = torch.from_numpy(np.zeros(1, 3, input_shape))
+        # self.writer.add_graph(model, )
+        # init_skeleton = torch.zeros((64, 3, 150, 18, 2)).cuda()  # 给一个输入进网络，得到正向传播网络结构图
+        # self.writer.add_graph(self.model, init_skeleton)
+
         if self.arg.phase == 'train':
             for epoch in range(self.arg.start_epoch, self.arg.num_epoch):
                 self.meta_info['epoch'] = epoch

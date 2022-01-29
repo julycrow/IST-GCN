@@ -6,7 +6,6 @@ from torch.autograd import Variable
 from net.utils.tgcn import ConvTemporalGraphical
 from net.utils.graph import Graph
 from net.utils.transformerencoder import TransFormerEncoder
-from net.inceptionv2_gcn import Inception2
 
 
 class Model(nn.Module):
@@ -36,39 +35,25 @@ class Model(nn.Module):
         # load graph
         self.graph = Graph(**graph_args)
         A = torch.tensor(self.graph.A, dtype=torch.float32, requires_grad=False)
-        A2 = torch.tensor(self.graph.A2, dtype=torch.float32, requires_grad=False)
-        A3 = torch.tensor(self.graph.A3, dtype=torch.float32, requires_grad=False)
         self.register_buffer('A', A)  # 注册变量,A是tensor变量。在之后的调用只用self.A_即可调用，寄存器变量访问快。
-        self.register_buffer('A2', A2)
-        self.register_buffer('A3', A3)
+
         # build networks
-        spatial_kernel_size = A.size(0)  # A.shape() = (3,18,18)
+        spatial_kernel_size = A.size(0)
         temporal_kernel_size = 9
-        kernel_size = (temporal_kernel_size, spatial_kernel_size)  # (9, 3)
+        kernel_size = (temporal_kernel_size, spatial_kernel_size)
         self.data_bn = nn.BatchNorm1d(in_channels * A.size(1))  # 批量归一化
         kwargs0 = {k: v for k, v in kwargs.items() if k != 'dropout'}
         self.st_gcn_networks = nn.ModuleList((
-            # st_gcn(in_channels, 64, kernel_size, 1, residual=False, **kwargs0),
-            # st_gcn(64, 64, kernel_size, 1, **kwargs),
-            # st_gcn(64, 64, kernel_size, 1, **kwargs),
-            # st_gcn(64, 64, kernel_size, 1, **kwargs),
-            # st_gcn(64, 128, kernel_size, 2, **kwargs),
-            # st_gcn(128, 128, kernel_size, 1, **kwargs),
-            # st_gcn(128, 128, kernel_size, 1, **kwargs),
-            # st_gcn(128, 256, kernel_size, 2, **kwargs),
-            # st_gcn(256, 256, kernel_size, 1, **kwargs),
-            # st_gcn(256, 256, kernel_size, 1, **kwargs),
             st_gcn(in_channels, 64, kernel_size, 1, residual=False, **kwargs0),
             st_gcn(64, 64, kernel_size, 1, **kwargs),
             st_gcn(64, 64, kernel_size, 1, **kwargs),
             st_gcn(64, 64, kernel_size, 1, **kwargs),
-
-            st_gcn(64, 128, kernel_size, 1, **kwargs),
+            st_gcn(64, 128, kernel_size, 2, **kwargs),
             st_gcn(128, 128, kernel_size, 1, **kwargs),
-
-            st_gcn(128, 256, kernel_size, 1, **kwargs)
-            # st_gcn(256, 256, kernel_size, 1, ** kwargs)
-
+            st_gcn(128, 128, kernel_size, 1, **kwargs),
+            st_gcn(128, 256, kernel_size, 2, **kwargs),
+            st_gcn(256, 256, kernel_size, 1, **kwargs),
+            st_gcn(256, 256, kernel_size, 1, **kwargs),
         ))
 
         # initialize parameters for edge importance weighting   初始化边重要性权重的参数(简单的注意力机制)
@@ -77,22 +62,11 @@ class Model(nn.Module):
                 nn.Parameter(torch.ones(self.A.size()))  # initial with one
                 for i in self.st_gcn_networks
             ])
-            self.edge_importance2 = nn.ParameterList([
-                nn.Parameter(torch.ones(self.A2.size()))  # initial with one
-                for i in self.st_gcn_networks
-            ])
-            self.edge_importance3 = nn.ParameterList([
-                nn.Parameter(torch.ones(self.A3.size()))  # initial with one
-                for i in self.st_gcn_networks
-            ])
         else:
             self.edge_importance = [1] * len(self.st_gcn_networks)
-            self.edge_importance2 = [1] * len(self.st_gcn_networks)
-            self.edge_importance3 = [1] * len(self.st_gcn_networks)
 
         # fcn for prediction 全连接
         self.fcn = nn.Conv2d(256, num_class, kernel_size=1)
-        # self.transformerencoder = TransFormerEncoder(256, 256)
 
     def forward(self, x):
 
@@ -107,17 +81,10 @@ class Model(nn.Module):
         # 换成这样的格式就可以与2维卷积完全类比起来。CNN中核的两维对应的是(h,w)，而st-gcn的核对应的是(T,V)
 
         # forward
-        for gcn, importance, importance2, importance3 in zip(self.st_gcn_networks, self.edge_importance,
-                                                             self.edge_importance2,
-                                                             self.edge_importance3):  # edge_importance与st-gcn层一一对应,
+        for gcn, importance in zip(self.st_gcn_networks, self.edge_importance):  # edge_importance与st-gcn层一一对应,
             # gcn实际上代表的是st-gcn的一层
-            x, _, _2, _3 = gcn(x, self.A * importance, self.A2 * importance2,
-                               self.A3 * importance3)  # 注意在forward传入的A并不是单纯的self.A,而是self.A * importance
-        # for gcn, importance in zip(self.st_gcn_networks, self.edge_importance):  # edge_importance与st-gcn层一一对应,
-        #     # gcn实际上代表的是st-gcn的一层
-        #     x, _, _2, _3 = gcn(x, self.A * importance, self.A2 * importance,
-        #                        self.A3 * importance)  # 注意在forward传入的A并不是单纯的self.A,而是self.A * importance
-        # x = self.transformerencoder(x)
+            x, _ = gcn(x, self.A * importance)  # 注意在forward传入的A并不是单纯的self.A,而是self.A * importance
+
         # global pooling
         x = F.avg_pool2d(x, x.size()[2:])
         x = x.view(N, M, -1, 1, 1).mean(dim=1)
@@ -126,7 +93,7 @@ class Model(nn.Module):
         x = self.fcn(x)
         x = x.view(x.size(0), -1)
 
-        return x
+        return x  # [16,60] 60为类别
 
     def extract_feature(self, x):
 
@@ -191,13 +158,12 @@ class st_gcn(nn.Module):
         assert kernel_size[0] % 2 == 1
         padding = ((kernel_size[0] - 1) // 2, 0)
 
-        # self.gcn = ConvTemporalGraphical(in_channels, out_channels,
-        #                                  kernel_size[1])  # 使用卷积核的第二维即 3 组
-        self.gcn = Inception2(in_channels, out_channels,
-                              kernel_size[1])  # 使用卷积核的第二维即 3 组
+        self.gcn = ConvTemporalGraphical(in_channels, out_channels,
+                                         kernel_size[1])  # 第一层使用的卷积核的第二维为 3
+
         self.tcn = nn.Sequential(  # 一个有序的容器，神经网络模块将按照在传入构造器的顺序依次被添加到计算图中执行
             nn.BatchNorm2d(out_channels),  # 在卷积神经网络的卷积层之后总会添加BatchNorm2d进行数据的归一化处理，这使得数据在进行Relu之前不会因为数据过大而导致网络性能的不稳定
-            nn.ReLU(inplace=True),
+            nn.ReLU(inplace=True),  # inplace=True->在通过relu()计算时的得到的新值不会占用新的空间而是直接覆盖原来的值，为False则相反
             nn.Conv2d(  # TCN，用的二维卷积，####这是一个1D卷积，卷积的维度是时间维度，他的卷积核一行多列
                 out_channels,
                 out_channels,
@@ -206,8 +172,10 @@ class st_gcn(nn.Module):
                 padding,  # 填充
             ),
             nn.BatchNorm2d(out_channels),
-            nn.Dropout(dropout, inplace=True),  # inplace=True->在通过relu()计算时的得到的新值不会占用新的空间而是直接覆盖原来的值，为False则相反
+            nn.Dropout(dropout, inplace=True),
         )
+        # self.transformerencoder = TransFormerEncoder(in_channels, out_channels)
+        self.linear = nn.Linear(3, out_channels)
         if not residual:  # 每一个st-gcn层都用residual残差模块来改进
             self.residual = lambda x: 0
 
@@ -220,16 +188,16 @@ class st_gcn(nn.Module):
                     in_channels,
                     out_channels,
                     kernel_size=1,
-                    stride=(stride, 1)),  # 当通道数要增加时，使用1x1conv来进行通道的翻倍
+                    stride=(stride, 1)),  # 当通道数要增加时，使用2x1conv来进行T的压缩
                 nn.BatchNorm2d(out_channels),
             )
 
         self.relu = nn.ReLU(inplace=True)
 
-    def forward(self, x, A, A2, A3):
+    def forward(self, x, A):
 
         res = self.residual(x)
-        x, A, A2, A3 = self.gcn(x, A, A2, A3)
+        x, A = self.gcn(x, A)
         x = self.tcn(x) + res
         # x = self.transformerencoder(x) + res
-        return self.relu(x), A, A2, A3
+        return self.relu(x), A

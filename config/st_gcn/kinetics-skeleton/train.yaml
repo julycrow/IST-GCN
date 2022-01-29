@@ -1,4 +1,4 @@
-work_dir: ./work_dir/recognition/kinetics_skeleton/ST_GCN
+work_dir: ./work_dir/recognition/kinetics_skeleton/ST_GCN_sym
 
 # feeder
 feeder: feeder.feeder.Feeder
@@ -21,17 +21,17 @@ model_args:
   graph_args:
 #    layout: 'openpose'
 #    strategy: 'spatial'
-    layout: 'openpose_symmetric'
-    strategy: 'spatial_symmetric'
+    layout: 'openpose_sym'
+    strategy: 'spatial_sym'
 
 # training
 device: [0]
-batch_size: 16
+batch_size: 32
 test_batch_size: 32
 
 #optim
 base_lr: 0.1
-step: [20, 30, 40, 50]
+step: [20, 30, 40]
 num_epoch: 50
 
 

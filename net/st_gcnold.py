@@ -175,7 +175,7 @@ class st_gcn(nn.Module):
             nn.Dropout(dropout, inplace=True),
         )
         # self.transformerencoder = TransFormerEncoder(in_channels, out_channels)
-
+        self.linear = nn.Linear(3, out_channels)
         if not residual:  # 每一个st-gcn层都用residual残差模块来改进
             self.residual = lambda x: 0
 

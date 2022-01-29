@@ -47,10 +47,11 @@ class DemoOffline(IO):
         output_result_path = '{}/{}.mp4'.format(self.arg.output_dir, video_name)
 
         writer = skvideo.io.FFmpegWriter(output_result_path, outputdict={'-b': '300000000'})
+
         # for img in images:
         #     writer.writeFrame(img)
         # writer.close()
-        # print('The Demo result has been saved in {}.'.format('D:/PycharmProject/st-gcn/data/demo_result/kick.mp4'))
+        # print('The Demo result has been saved in {}.'.format(output_result_path)
 
         # visualize
         for image in images:
@@ -176,8 +177,8 @@ class DemoOffline(IO):
             opWrapper.emplaceAndPop(op.VectorDatum([datum]))
             multi_pose = datum.poseKeypoints  # (num_person, num_joint, 3)
 
-            #if len(multi_pose.shape) != 3:  # 是否三维数组
-            if (multi_pose is None):  # 是否有数据，否则为None的时候会报错
+            # if len(multi_pose.shape) != 3:  # 是否三维数组
+            if multi_pose is None:  # 是否有数据，否则为None的时候会报错
                 continue
 
             # normalization

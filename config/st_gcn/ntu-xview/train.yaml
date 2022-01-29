@@ -1,4 +1,4 @@
-work_dir: ./work_dir/recognition/ntu-xview/ST_GCN
+work_dir: ./work_dir/recognition/ntu-xview/ST_GCN_mstcn_9
 
 # feeder
 feeder: feeder.feeder.Feeder
@@ -10,7 +10,7 @@ test_feeder_args:
   label_path: D:\PycharmProject\st-gcn数据集/data/NTU-RGB-D/xview/val_label.pkl
 
 # model
-model: net.st_gcn.Model
+model: net.st_gcn_mstcn.Model
 model_args:
   in_channels: 3
   num_class: 60
@@ -23,13 +23,13 @@ model_args:
 #optim
 weight_decay: 0.0001
 base_lr: 0.1
-step: [10, 50]
-
+step: [10, 30, 40]
+#step: [20, 50, 60]
 # training
 device: [0]
 batch_size: 16
-test_batch_size: 64
-num_epoch: 80
-
+test_batch_size: 16
+num_epoch: 50
+#num_epoch: 80
 
 

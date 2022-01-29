@@ -2,6 +2,7 @@
 
 import torch
 import torch.nn as nn
+import math
 
 
 class ConvTemporalGraphical(nn.Module):
@@ -40,13 +41,18 @@ class ConvTemporalGraphical(nn.Module):
                  in_channels,
                  out_channels,
                  kernel_size,
+                 stride = 1,
                  t_kernel_size=1,
                  t_stride=1,
                  t_padding=0,
                  t_dilation=1,
+                 lamda=0.5,
+                 alpha=0.1,
                  bias=True):
         super().__init__()
 
+        self.alpha = alpha
+        self.lamda = lamda
         self.kernel_size = kernel_size  # 卷积核数(向心离心静止), 不是卷积核大小
         self.conv = nn.Conv2d(  # 距离为1的卷积
             in_channels,
@@ -56,34 +62,34 @@ class ConvTemporalGraphical(nn.Module):
             stride=(t_stride, 1),
             dilation=(t_dilation, 1),  # 空洞卷积，默认为1（不采用），从卷积核上的一个参数到另一个参数需要走过的距离
             bias=bias)
-        # self.conv2 = nn.Conv2d(  # 距离为2的卷积
-        #     in_channels,
-        #     out_channels * kernel_size,
-        #     kernel_size=(2, 1),  # 两个数分别作用在高和宽两个维度, 为1*1的卷积核,只能提取到自己的空间特征, 加入inception之后,可以提取到自己和周围节点的
-        #     padding=(1, 0),
-        #     stride=(t_stride, 1),
-        #     dilation=(t_dilation, 1),
+        # self.linear = nn.Linear(32*3*300*25, 32*out_channels*300*25)  # 3为初始值通道
+        # self.h0conv = nn.Conv2d(  # 距离为1的卷积
+        #     3,
+        #     out_channels,
+        #     kernel_size=(t_kernel_size, 1),  # 两个数分别作用在高和宽两个维度, 为1*1的卷积核,只能提取到自己的空间特征, 加入inception之后,可以提取到自己和周围节点的
+        #     padding=(t_padding, 0),
+        #     stride=(stride, 1),
+        #     dilation=(t_dilation, 1),  # 空洞卷积，默认为1（不采用），从卷积核上的一个参数到另一个参数需要走过的距离
         #     bias=bias)
-        # self.conv3 = nn.Conv2d(  # 距离为3的卷积
-        #     in_channels,
-        #     out_channels * kernel_size,
-        #     kernel_size=(3, 1),  # 两个数分别作用在高和宽两个维度, 为1*1的卷积核,只能提取到自己的空间特征, 加入inception之后,可以提取到自己和周围节点的
-        #     padding=(2, 0),
-        #     stride=(t_stride, 1),
-        #     dilation=(t_dilation, 1),
-        #     bias=bias)
-
-    def forward(self, x, A):
+    def forward(self, x, A, h0, l):
         assert A.size(0) == self.kernel_size
+        theta = math.log(self.lamda / l + 1)
         # A.shape()=(3,25,25)
         x = self.conv(x)
+
+        # h0 = self.linear(h0)
+        # h0 = self.h0conv(h0)
 
         n, kc, t, v = x.size()  # (16,192,300,25)
         x = x.view(n, self.kernel_size, kc // self.kernel_size, t, v)
         # // -> 整数除法
         # x.shape()=(16,3,64,300,25)
         # 16=batchsize(8)*member(2)
-        x = torch.einsum('nkctv,kvw->nctw', [x, A])
+        x = torch.einsum('nkctv,kvw->nctw', [x, A]).contiguous()
         # 爱因斯坦简记法：做张量运算，'nkctv,kvw->nctw'为数组下标，其中隐含含义：对k,v进行求和  # x.shape()=(16,64,300,25)
+        x = (1 - self.alpha) * x + self.alpha * h0  # initial residual
 
-        return x.contiguous(), A
+        # x = theta * x + (1 - theta) * x  # identity mapping
+        # 因为此权值在conv中，因此无法加入单位映射，若需要加，要将conv替换
+
+        return x, A

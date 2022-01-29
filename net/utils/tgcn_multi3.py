@@ -83,7 +83,10 @@ class ConvTemporalGraphical(nn.Module):
         # // -> 整数除法
         # x.shape()=(16,3,64,300,25)
         # 16=batchsize(8)*member(2)
-        x = torch.einsum('nkctv,kvw->nctw', [x, A])
+        x1 = torch.einsum('nkctv,kvw->nctw', [x, A])
+        x2 = torch.einsum('nkctv,kvw->nctw', [x, A ** 2])
+        x3 = torch.einsum('nkctv,kvw->nctw', [x, A ** 3])
+        x = x1 + x2 + x3
         # 爱因斯坦简记法：做张量运算，'nkctv,kvw->nctw'为数组下标，其中隐含含义：对k,v进行求和  # x.shape()=(16,64,300,25)
 
         return x.contiguous(), A

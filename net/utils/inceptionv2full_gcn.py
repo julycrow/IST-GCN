@@ -59,7 +59,7 @@ class Inception2(nn.Module):
         #     bias=bias)
 
         self.branch = BasicConv2d(in_channels, out_channels, kernel_size)
-
+        self.maxpool = nn.MaxPool2d(3, stride=1)
     # 前向过程
     def forward(self, x, A, A2, A3):
         assert A.size(0) == self.kernel_size
@@ -69,7 +69,7 @@ class Inception2(nn.Module):
         x1 = self.multiply_Distance_matrix(x0, A)
         x2 = self.multiply_Distance_matrix(x0, A2)
         x3 = self.multiply_Distance_matrix(x0, A3)
-
+        x4 = self.maxpool(x0)
         # x1 = self.avg_x(x1, 2)
         # x2 = self.avg_x(x2, 4)
         # x3 = self.avg_x(x3, 4)
@@ -87,15 +87,15 @@ class Inception2(nn.Module):
         x0 = x.view(n, self.kernel_size, kc // self.kernel_size, t, v)  # // -> 整除法
         x0 = torch.einsum('nkctv,kvw->nctw', [x0, A])  # 爱因斯坦简记法：做张量运算，'nkctv,kvw->nctw'为数组下标，其中隐含含义：对k,v进行求和
         return x0.contiguous()
-
-    def avg_pool(self, x, kernel_size):  # 平均池化
-        x = x.permute(0, 2, 3, 1)
-        x = F.avg_pool2d(x, kernel_size=kernel_size)
-        x = x.permute(0, 3, 1, 2)
-        return x
-
-    def avg_x(self, x, k):
-        n, c, t, v = x.size()
-        x = x.view(n, c // k, k, t, v)
-        x = x.mean(dim=2)
-        return x
+    #
+    # def avg_pool(self, x, kernel_size):  # 平均池化
+    #     x = x.permute(0, 2, 3, 1)
+    #     x = F.avg_pool2d(x, kernel_size=kernel_size)
+    #     x = x.permute(0, 3, 1, 2)
+    #     return x
+    #
+    # def avg_x(self, x, k):
+    #     n, c, t, v = x.size()
+    #     x = x.view(n, c // k, k, t, v)
+    #     x = x.mean(dim=2)
+    #     return x

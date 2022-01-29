@@ -55,7 +55,7 @@ class DemoRealtime(IO):
         warning_person = 2  # 聚集人数
         long_interval = 5400  # 帧间隔(长),3分钟包含的帧数, 用来判断长警情,
         short_interval = 1800  # 帧间隔(短),1分钟包含的帧数, 用来判断短警情
-        long_recognize_windows = 180  # 识别窗口(长),用来判断长警情,出现改警情的次数
+        long_recognize_windows = 180  # 识别窗口(长),用来判断长警情,出现该警情的次数
         short_recognize_windows = 45  # 识别窗口(短),用来判断短警情
         person_counting = smash_counting = pull_counting = fall_counting = 0  # 长时间警情持续帧数
         long_last = 180  # 长时间警情显示持续帧数
@@ -99,7 +99,12 @@ class DemoRealtime(IO):
         # start recognition
         start_time = time.time()
         frame_index = 0
+        # saving video
+        video_name = self.arg.video.split('\\')[-1].split('.')[0]
+        output_result_path = '{}/{}.mp4'.format(self.arg.output_dir, video_name)
 
+        writer = skvideo.io.FFmpegWriter(output_result_path, outputdict={})
+        # writer = skvideo.io.FFmpegWriter(output_result_path)
         while True:
 
             tic = time.time()
@@ -233,9 +238,12 @@ class DemoRealtime(IO):
             app_fps = 1 / (time.time() - tic)
             image = self.render(data_numpy, voting_label_name,
                                 video_label_name, intensity, orig_image, app_fps)
+            writer.writeFrame(image)
             cv2.imshow("ST-GCN", image)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
+        writer.close()
+        print('The Demo result has been saved in {}.'.format(output_result_path))
 
     def predict(self, data):
         # forward
@@ -313,6 +321,9 @@ class DemoRealtime(IO):
                             default=True,
                             type=bool,
                             help='Output alarm information or not.')
+        parser.add_argument('--output_dir',
+                            default='./data/demo_result',
+                            help='Path to save results')
         parser.set_defaults(
             config='./config/st_gcn/kinetics-skeleton/demo_realtime.yaml')
         parser.set_defaults(print_log=False)
